@@ -126,47 +126,61 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(unshuffled[2].id, "2")
     }
     
-  /*  func testShuffled2() {
+    func testShuffled2() async {
         let items: [PlayableItem] = createMockQueue(count: 15)
         
         let queue = Queue()
-    
-        let setItemsExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setItemsExpectation.fulfill()
-        }
-       
-        wait(for: [setItemsExpectation], timeout: 5)
-        XCTAssertEqual(queue.numberOfItems, 15)
-        XCTAssertEqual(queue.getTrack(at: 0)?.id, "0")
-        XCTAssertEqual(queue.getTrack(at: 1)?.id, "1")
-        XCTAssertEqual(queue.getTrack(at: 2)?.id, "2")
-        XCTAssertEqual(queue.getTrack(at: 3)?.id, "3")
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, "4")
-        XCTAssertEqual(queue.getTrack(at: 5)?.id, "5")
-        XCTAssertEqual(queue.getTrack(at: 6)?.id, "6")
-        XCTAssertEqual(queue.getTrack(at: 7)?.id, "7")
-        XCTAssertEqual(queue.getTrack(at: 8)?.id, "8")
-        XCTAssertEqual(queue.getTrack(at: 9)?.id, "9")
-        XCTAssertEqual(queue.getTrack(at: 10)?.id, "10")
-        XCTAssertEqual(queue.getTrack(at: 11)?.id, "11")
-        XCTAssertEqual(queue.getTrack(at: 12)?.id, "12")
-        XCTAssertEqual(queue.getTrack(at: 13)?.id, "13")
-        XCTAssertEqual(queue.getTrack(at: 14)?.id, "14")
+        let _ = await queue.set(items: items)
         
-        let shuffleExpectation1 = self.expectation(description: "wait")
+        let initialNumberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(initialNumberOfItems, 15)
+        
+        let firstTrack = await queue.getTrack(at: 0)
+        let secondTrack = await queue.getTrack(at: 1)
+        let thirdTrack = await queue.getTrack(at: 2)
+        let fourthTrack = await queue.getTrack(at: 3)
+        let fifthTrack = await queue.getTrack(at: 4)
+        let sixthTrack = await queue.getTrack(at: 5)
+        let seventhTrack = await queue.getTrack(at: 6)
+        let eighthTrack = await queue.getTrack(at: 7)
+        let ninthTrack = await queue.getTrack(at: 8)
+        let tenthTrack = await queue.getTrack(at: 9)
+        let eleventhTrack = await queue.getTrack(at: 10)
+        let twelfthTrack = await queue.getTrack(at: 11)
+        let thirteenthTrack = await queue.getTrack(at: 12)
+        let fourteenthTrack = await queue.getTrack(at: 13)
+        let fifteenthTrack = await queue.getTrack(at: 14)
+        
+        XCTAssertEqual(firstTrack?.id, "0")
+        XCTAssertEqual(secondTrack?.id, "1")
+        XCTAssertEqual(thirdTrack?.id, "2")
+        XCTAssertEqual(fourthTrack?.id, "3")
+        XCTAssertEqual(fifthTrack?.id, "4")
+        XCTAssertEqual(sixthTrack?.id, "5")
+        XCTAssertEqual(seventhTrack?.id, "6")
+        XCTAssertEqual(eighthTrack?.id, "7")
+        XCTAssertEqual(ninthTrack?.id, "8")
+        XCTAssertEqual(tenthTrack?.id, "9")
+        XCTAssertEqual(eleventhTrack?.id, "10")
+        XCTAssertEqual(twelfthTrack?.id, "11")
+        XCTAssertEqual(thirteenthTrack?.id, "12")
+        XCTAssertEqual(fourteenthTrack?.id, "13")
+        XCTAssertEqual(fifteenthTrack?.id, "14")
+        
         var unshuffled: [PlayableItem] = []
         var shuffledCount: Int?
         
-        queue.shuffle(fromItem: items[9]) { queue, unshuffledItems, shuffledItems, allItems in
-            unshuffled = unshuffledItems
-            shuffledCount = shuffledItems.count
-            shuffleExpectation1.fulfill()
+        let result = await queue.shuffle(fromItem: items[9])
+        switch result {
+        case .success(let operationSuccess):
+            unshuffled = operationSuccess.unshuffledItems
+            shuffledCount = operationSuccess.shuffledItems.count
+        case .failure:
+            break
         }
         
-        wait(for: [shuffleExpectation1], timeout: 5)
-        
-        XCTAssertEqual(queue.numberOfItems, 15)
+        let newNumberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(newNumberOfItems, 15)
         XCTAssertEqual(shuffledCount, 5)
         XCTAssertEqual(unshuffled.count, 10)
         // first 10 items (up to index 9) should remain unchanged
@@ -182,165 +196,159 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(unshuffled[9].id, "9")
     }
     
-    func testNumberOfItems() {
+    func testNumberOfItems() async {
         let items: [PlayableItem] = createMockQueue(count: 30)
         let queue: Queue = Queue()
         
-        let expectation1 = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            expectation1.fulfill()
-        }
+        let _ = await queue.set(items: items)
         
-        wait(for: [expectation1], timeout: 5)
-        XCTAssertEqual(queue.numberOfItems, 30)
+        let numberOfitems = await queue.numberOfItems()
+        XCTAssertEqual(numberOfitems, 30)
     }
     
-    func testInsert() {
+    func testInsert() async {
         let items: [PlayableItem] = createMockQueue(count: 10)
         let queue: Queue = Queue()
         
-        let setQueueExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setQueueExpectation.fulfill()
-        }
+        let _ = await queue.set(items: items)
+        let initialNumberOfitems = await queue.numberOfItems()
+        XCTAssertEqual(initialNumberOfitems, 10)
         
-        wait(for: [setQueueExpectation], timeout: 5)
-        
-        XCTAssertEqual(queue.numberOfItems, 10)
-        
-        let expectation = self.expectation(description: "wait")
         let itemToInsert = MockPlayableItem(id: "11", fileUrl: "-")
         
         // insert after item at index 3. so now it should be at index 4
         var newItemIndex: Int?
         var insertedItem: PlayableItem?
-        queue.insert(item: itemToInsert, afterItem: items[3]) { queue, item, index in
-            insertedItem = item
-            newItemIndex = index
-            expectation.fulfill()
+        let result = await queue.insert(item: itemToInsert, afterItem: items[3])
+        switch result {
+        case .success(let modificationSuccess):
+            insertedItem = modificationSuccess.item
+            newItemIndex = modificationSuccess.index
+        case .failure:
+            break
         }
-        
-        wait(for: [expectation], timeout: 5)
         
         XCTAssertEqual(newItemIndex, 4)
         XCTAssertEqual(insertedItem?.id, itemToInsert.id)
-        XCTAssertEqual(queue.numberOfItems, 11)
-        XCTAssertEqual(queue.getTrack(at: 3)?.id, items[3].id)
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, itemToInsert.id)
-        XCTAssertEqual(queue.getTrack(at: 5)?.id, items[4].id)
+        
+        let newNumberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(newNumberOfItems, 11)
+        let track3 = await queue.getTrack(at: 3)
+        let track4 = await queue.getTrack(at: 4)
+        let track5 = await queue.getTrack(at: 5)
+        
+        XCTAssertEqual(track3?.id, items[3].id)
+        XCTAssertEqual(track4?.id, itemToInsert.id)
+        XCTAssertEqual(track5?.id, items[4].id)
     }
     
-    func testRemove() {
+    func testRemove() async {
         let items: [PlayableItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
-        let setQueueExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setQueueExpectation.fulfill()
-        }
-        
-        wait(for: [setQueueExpectation], timeout: 5)
-        
-        XCTAssertEqual(queue.numberOfItems, 5)
+        let _ = await queue.set(items: items)
+        let initialNumberOfitems = await queue.numberOfItems()
+        XCTAssertEqual(initialNumberOfitems, 5)
         
         let itemToRemove: PlayableItem = items[3]
-        let removeExpectation = self.expectation(description: "wait")
+        
         var removedItem: PlayableItem?
         var removedIndex: Int?
         
-        queue.remove(item: itemToRemove) { queue, item, index in
-            removedItem = item
-            removedIndex = index
-            removeExpectation.fulfill()
+        let result = await queue.remove(item: itemToRemove)
+        switch result {
+        case .success(let modificationSuccess):
+            removedItem = modificationSuccess.item
+            removedIndex = modificationSuccess.index
+        case .failure:
+            break
         }
         
-        wait(for: [removeExpectation], timeout: 5)
-        
+        let afterNumberOfItems = await queue.numberOfItems()
         XCTAssertEqual(removedItem?.id, itemToRemove.id)
-        XCTAssertEqual(queue.numberOfItems, 4)
+        XCTAssertEqual(afterNumberOfItems, 4)
         XCTAssertEqual(removedIndex, 3)
         
-        XCTAssertEqual(queue.getTrack(at: 0)?.id, items[0].id)
-        XCTAssertEqual(queue.getTrack(at: 1)?.id, items[1].id)
-        XCTAssertEqual(queue.getTrack(at: 2)?.id, items[2].id)
+        let track1 = await queue.getTrack(at: 0)
+        let track2 = await queue.getTrack(at: 1)
+        let track3 = await queue.getTrack(at: 2)
+        let track4 = await queue.getTrack(at: 3)
+        
+        XCTAssertEqual(track1?.id, items[0].id)
+        XCTAssertEqual(track2?.id, items[1].id)
+        XCTAssertEqual(track3?.id, items[2].id)
         // we removed the 4th item. so the 4th index from the original array should have moved up to 3rd index now
-        XCTAssertEqual(queue.getTrack(at: 3)?.id, items[4].id)
+        XCTAssertEqual(track4?.id, items[4].id)
     }
     
-    func testAppend() {
+    func testAppend() async {
         let items: [PlayableItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
-        let setQueueExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setQueueExpectation.fulfill()
-        }
+        let _ = await queue.set(items: items)
+        let initialNumberOfitems = await queue.numberOfItems()
+        XCTAssertEqual(initialNumberOfitems, 5)
         
-        wait(for: [setQueueExpectation], timeout: 5)
-        
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, items[4].id)
-        XCTAssertEqual(queue.numberOfItems, 5)
+        let initial5thTrack = await queue.getTrack(at: 4)
+        XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
         let itemToAppend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--")
-        let appendExpectation = self.expectation(description: "wait")
-        queue.append(item: itemToAppend) { queue, item in
-            appendExpectation.fulfill()
-        }
         
-        wait(for: [appendExpectation], timeout: 5)
+        let _ = await queue.append(item: itemToAppend)
+        
         
         // Now we have added 1 item
-        XCTAssertEqual(queue.numberOfItems, 6)
+        let afterNumberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(afterNumberOfItems, 6)
+        
         // previous indices should be the same
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, items[4].id)
-        XCTAssertEqual(queue.getTrack(at: 5)?.id, itemToAppend.id)
+        let fifthTrack = await queue.getTrack(at: 4)
+        let sixthTrack = await queue.getTrack(at: 5)
+        XCTAssertEqual(fifthTrack?.id, items[4].id)
+        XCTAssertEqual(sixthTrack?.id, itemToAppend.id)
     }
     
-    func testPrepend() {
+    func testPrepend() async {
         let items: [PlayableItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
-        let setQueueExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setQueueExpectation.fulfill()
-        }
+        let _ = await queue.set(items: items)
+        let initialNumberOfitems = await queue.numberOfItems()
+        XCTAssertEqual(initialNumberOfitems, 5)
         
-        wait(for: [setQueueExpectation], timeout: 5)
-        
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, items[4].id)
-        XCTAssertEqual(queue.numberOfItems, 5)
+        let initial5thTrack = await queue.getTrack(at: 4)
+        XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
         let itemToPrepend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--")
-        let appendExpectation = self.expectation(description: "wait")
-        queue.prepend(item: itemToPrepend) { queue, item in
-            appendExpectation.fulfill()
-        }
-        
-        wait(for: [appendExpectation], timeout: 5)
+        let _ = await queue.prepend(item: itemToPrepend)
         
         // Now we have added 1 item
-        XCTAssertEqual(queue.numberOfItems, 6)
+        let afterNumberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(afterNumberOfItems, 6)
+        
         // previous indices have increased by 1 since we prepended an item
-        XCTAssertEqual(queue.getTrack(at: 0)?.id, itemToPrepend.id)
-        XCTAssertEqual(queue.getTrack(at: 1)?.id, items[0].id)
-        XCTAssertEqual(queue.getTrack(at: 2)?.id, items[1].id)
-        XCTAssertEqual(queue.getTrack(at: 3)?.id, items[2].id)
+        let track1 = await queue.getTrack(at: 0)
+        let track2 = await queue.getTrack(at: 1)
+        let track3 = await queue.getTrack(at: 2)
+        let track4 = await queue.getTrack(at: 3)
+        
+        XCTAssertEqual(track1?.id, itemToPrepend.id)
+        XCTAssertEqual(track2?.id, items[0].id)
+        XCTAssertEqual(track3?.id, items[1].id)
+        XCTAssertEqual(track4?.id, items[2].id)
     }
     
-    func testGetTrackInvalidIndex() {
+    func testGetTrackInvalidIndex() async {
         let items: [PlayableItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
-        let setQueueExpectation = self.expectation(description: "wait")
-        await queue.set(items: items) { queue, items in
-            setQueueExpectation.fulfill()
-        }
+        let _ = await queue.set(items: items)
         
-        wait(for: [setQueueExpectation], timeout: 5)
-        
-        XCTAssertEqual(queue.getTrack(at: 4)?.id, items[4].id)
-        XCTAssertNil(queue.getTrack(at: 5))
-    }*/
+        let track5 = await queue.getTrack(at: 4)
+        let track6 = await queue.getTrack(at: 5)
+        XCTAssertEqual(track5?.id, items[4].id)
+        XCTAssertNil(track6)
+    }
     
     private func createMockQueue(count: Int) -> [PlayableItem] {
         var items: [PlayableItem] = []
