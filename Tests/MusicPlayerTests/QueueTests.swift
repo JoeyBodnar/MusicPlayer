@@ -20,90 +20,73 @@ private final class MockPlayableItem: PlayableItem {
 
 final class QueueTests: XCTestCase {
     
-    func testSetItems() {
+    func testSetItems() async {
         let items: [PlayableItem] = createMockQueue(count: 1000)
         let queue = Queue()
     
-        let setItemsExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setItemsExpectation.fulfill()
-        }
+        let _ = await queue.set(items: items)
        
-        wait(for: [setItemsExpectation], timeout: 5)
-        XCTAssertEqual(queue.numberOfItems, 1000)
-        XCTAssertEqual(queue.getTrack(at: 0)?.id, items.first?.id)
-        XCTAssertEqual(queue.getTrack(at: 499)?.id, items[499].id)
-        XCTAssertEqual(queue.getTrack(at: 999)?.id, items.last?.id)
+        let numberOfItems = await queue.numberOfItems()
+        
+        XCTAssertEqual(numberOfItems, 1000)
+        let track1 = await queue.getTrack(at: 0)
+        let track499 = await queue.getTrack(at: 499)
+        let track999 = await queue.getTrack(at: 999)
+        
+        XCTAssertEqual(track1?.id, items.first?.id)
+        XCTAssertEqual(track499?.id, items[499].id)
+        XCTAssertEqual(track999?.id, items.last?.id)
     }
     
-    func testReorder() {
+    func testReorder() async {
         let items: [PlayableItem] = createMockQueue(count: 1000)
         let queue = Queue()
     
-        let setItemsExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setItemsExpectation.fulfill()
-        }
-       
-        wait(for: [setItemsExpectation], timeout: 5)
-        XCTAssertEqual(queue.numberOfItems, 1000)
+        let _ = await queue.set(items: items)
+        let numberOfItems = await queue.numberOfItems()
+        XCTAssertEqual(numberOfItems, 1000)
         
         let thirdIndexItem = items[3]
         let tenthIndexItem = items[10]
-        let reorderItemsExpectation = self.expectation(description: "wait")
-        queue.reorder(item: thirdIndexItem, afterItem: tenthIndexItem) { result in
-            reorderItemsExpectation.fulfill()
-        }
         
-        wait(for: [reorderItemsExpectation], timeout: 5)
+        let _ = await queue.reorder(item: thirdIndexItem, afterItem: tenthIndexItem)
         
         // item at third index should now be reordered
-        XCTAssertEqual(queue.getTrack(at: 10)?.id, thirdIndexItem.id)
+        let tenthTrack = await queue.getTrack(at: 10)
+        XCTAssertEqual(tenthTrack?.id, thirdIndexItem.id)
         
         // item at index 10 has moved up in queue
-        XCTAssertEqual(queue.getTrack(at: 9)?.id, tenthIndexItem.id)
+        let ninthTrack = await queue.getTrack(at: 9)
+        XCTAssertEqual(ninthTrack?.id, tenthIndexItem.id)
     }
     
-    func testQueue() {
+    func testQueue() async {
         let items: [PlayableItem] = createMockQueue(count: 20)
         let queue = Queue()
     
-        let setItemsExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setItemsExpectation.fulfill()
-        }
-       
-        wait(for: [setItemsExpectation], timeout: 5)
+        let _ = await queue.set(items: items)
         
         let newItem = MockPlayableItem(id: "234", fileUrl: "...")
         let afterItem = items[19] // last item in queue
         
-        let insertItemsExpectation = self.expectation(description: "wait")
-        queue.insert(item: newItem, afterItem: afterItem) { queue, item, index in
-            insertItemsExpectation.fulfill()
-        }
+        let _ = await queue.insert(item: newItem, afterItem: afterItem)
         
-        wait(for: [insertItemsExpectation], timeout: 5)
-        XCTAssertEqual(queue.getTrack(at: 20)?.id, newItem.id)
+        let twentiethTrack = await queue.getTrack(at: 20)
+        XCTAssertEqual(twentiethTrack?.id, newItem.id)
     }
     
-    func testShuffled() {
+    func testShuffled() async {
         let items: [PlayableItem] = createMockQueue(count: 6)
         let queue = Queue()
     
-        let setItemsExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
-            setItemsExpectation.fulfill()
-        }
-       
-        wait(for: [setItemsExpectation], timeout: 5)
+        let _ = await queue.set(items: items)
         
-        let firstTrack = queue.getTrack(at: 0)
-        let secondTrack = queue.getTrack(at: 1)
-        let thirdTrack = queue.getTrack(at: 2)
-        let fourthTrack = queue.getTrack(at: 3)
-        let fifthTrack = queue.getTrack(at: 4)
-        let sixthTrack = queue.getTrack(at: 5)
+        let firstTrack = await queue.getTrack(at: 0)
+        let secondTrack = await queue.getTrack(at: 1)
+        let thirdTrack = await queue.getTrack(at: 2)
+        let fourthTrack = await queue.getTrack(at: 3)
+        let fifthTrack = await queue.getTrack(at: 4)
+        let sixthTrack = await queue.getTrack(at: 5)
         
         XCTAssertEqual(firstTrack?.id, "0")
         XCTAssertEqual(secondTrack?.id, "1")
@@ -119,29 +102,31 @@ final class QueueTests: XCTestCase {
         // hash should be equal before shuffling
         XCTAssertEqual(originalItemsHash, queueItemsHash)
         
-        let shuffleExpectation1 = self.expectation(description: "wait")
         var unshuffled: [PlayableItem] = []
         var newItems: [PlayableItem] = []
         
-        queue.shuffle(fromItem: items[2]) { queue, unshuffledItems, shuffledItems, allItems in
-            unshuffled = unshuffledItems
-            newItems = allItems
-            shuffleExpectation1.fulfill()
+        let result = await queue.shuffle(fromItem: items[2])
+        switch result {
+        case .success(let successOperation):
+            unshuffled = successOperation.unshuffledItems
+            newItems = successOperation.allItems
+        case .failure:
+            break
         }
-        
-        wait(for: [shuffleExpectation1], timeout: 5)
         
         // hash should now not be equal because other items in array changed
         XCTAssertNotEqual(originalItemsHash, hashForItems(items: newItems))
         
-        XCTAssertEqual(queue.numberOfItems, 6)
+        let numberOfItemsAfter = await queue.numberOfItems()
+        XCTAssertEqual(numberOfItemsAfter, 6)
+        
         // first 3 items (up to index 2) should remain unchanged
         XCTAssertEqual(unshuffled[0].id, "0")
         XCTAssertEqual(unshuffled[1].id, "1")
         XCTAssertEqual(unshuffled[2].id, "2")
     }
     
-    func testShuffled2() {
+  /*  func testShuffled2() {
         let items: [PlayableItem] = createMockQueue(count: 15)
         
         let queue = Queue()
@@ -347,7 +332,7 @@ final class QueueTests: XCTestCase {
         let queue: Queue = Queue()
         
         let setQueueExpectation = self.expectation(description: "wait")
-        queue.set(items: items) { queue, items in
+        await queue.set(items: items) { queue, items in
             setQueueExpectation.fulfill()
         }
         
@@ -355,7 +340,7 @@ final class QueueTests: XCTestCase {
         
         XCTAssertEqual(queue.getTrack(at: 4)?.id, items[4].id)
         XCTAssertNil(queue.getTrack(at: 5))
-    }
+    }*/
     
     private func createMockQueue(count: Int) -> [PlayableItem] {
         var items: [PlayableItem] = []

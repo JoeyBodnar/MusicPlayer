@@ -21,18 +21,18 @@ public protocol PlayableItem: AnyObject {
 
 public protocol MusicQueuePlayerInterface: AnyObject {
     func playAVPlayer()
-    func play(startIndex: Int)
+    func play(startIndex: Int) async
     func pause()
     
-    func append(item: PlayableItem)
-    func prepend(item: PlayableItem)
-    func insert(item: PlayableItem, afterItem: PlayableItem)
-    func set(items: [PlayableItem])
-    func reorder(item: PlayableItem, afterItem otherItem: PlayableItem)
-    func shuffle(fromItem item: PlayableItem)
+    func append(item: PlayableItem) async
+    func prepend(item: PlayableItem) async
+    func insert(item: PlayableItem, afterItem: PlayableItem) async
+    func set(items: [PlayableItem]) async
+    func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) async
+    func shuffle(fromItem item: PlayableItem) async
     
-    func goBackToPreviousTrack()
-    func advanceToNextTrack()
+    func goBackToPreviousTrack() async
+    func advanceToNextTrack() async
     
     var currentTrack: Int { get set }
     var currentPlaybackTime: TimeInterval { get set }
@@ -131,44 +131,44 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     
     /// Call after calling `setItems(items: ..)`
     /// This function will instantiate the underlying AVPlayer
-    public func play(startIndex: Int) {
-        if let track = queue.getTrack(at: startIndex) {
+    public func play(startIndex: Int) async {
+        if let track = await queue.getTrack(at: startIndex) {
             currentTrack = startIndex
             self.player = AVPlayer(playerItem: AVPlayerItem(playableItem: track))
-            self.playNow()
+            await self.playNow()
         }
     }
     
     /// Used to resume playing the AVPlayer, setup the playback timer and invoke the delegate that playback began
-    private func playNow() {
+    private func playNow() async {
         playAVPlayer()
         setupPlaybackTimeTimer()
-        if let unwrappedTrack = queue.getTrack(at: currentTrack) {
+        if let unwrappedTrack = await queue.getTrack(at: currentTrack) {
             self.delegate?.musicQueuePlayer(queuePlayer: self, didBeginPlaybackForItem: unwrappedTrack, atIndex: currentTrack)
         }
     }
     
     // MARK: - Navigate Tracks
     
-    public func goBackToPreviousTrack() {
+    public func goBackToPreviousTrack() async {
         if (currentPlaybackTime < 3) && currentTrack > 0 { // go back to previous track
             currentTrack -= 1
-            if let trackToPlay = queue.getTrack(at: currentTrack) {
+            if let trackToPlay = await queue.getTrack(at: currentTrack) {
                 let avItem = AVPlayerItem(playableItem: trackToPlay)
                 player?.replaceCurrentItem(with: avItem)
-                playNow()
+                await playNow()
             }
         } else { // then go back to beginning of existing track
             player?.currentItem?.seek(to: .zero, completionHandler: nil)
         }
     }
     
-    public func advanceToNextTrack() {
+    public func advanceToNextTrack() async {
         self.currentTrack += 1
-        if let trackToPlay = queue.getTrack(at: currentTrack) {
+        if let trackToPlay = await queue.getTrack(at: currentTrack) {
             let avItem = AVPlayerItem(playableItem: trackToPlay)
             player?.replaceCurrentItem(with: avItem)
-            playNow()
+            await playNow()
         } else {
             pause()
         }
@@ -176,49 +176,48 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     
     // MARK: - Queue Modification
     
-    public func append(item: PlayableItem) {
-        queue.append(item: item) { queue, item in
-            self.delegate?.musicQueuePlayerDidAppendItem(queuePlayer: self, item: item)
+    public func append(item: PlayableItem) async {
+        let result = await queue.append(item: item)
+        self.delegate?.musicQueuePlayerDidAppendItem(queuePlayer: self, item: result.item)
+    }
+    
+    public func prepend(item: PlayableItem) async {
+        let result = await queue.prepend(item: item)
+        self.delegate?.musicQueuePlayerDidPrependItem(queuePlayer: self, item: result.item)
+    }
+    
+    public func insert(item: PlayableItem, afterItem: PlayableItem) async {
+        let result = await queue.insert(item: item, afterItem: afterItem)
+        switch result {
+        case .success(let success):
+            self.delegate?.musicQueuePlayer(queuePlayer: self, didInsertItem: success.item, atIndex: success.index)
+        case .failure:
+            break
         }
     }
     
-    public func prepend(item: PlayableItem) {
-        queue.prepend(item: item) { queue, item in
-            self.delegate?.musicQueuePlayerDidPrependItem(queuePlayer: self, item: item)
-        }
-    }
-    
-    public func insert(item: PlayableItem, afterItem: PlayableItem) {
-        queue.insert(item: item, afterItem: afterItem) { queue, item, index in
-            self.delegate?.musicQueuePlayer(queuePlayer: self, didInsertItem: item, atIndex: index)
-        }
-    }
-    
-    public func set(items: [PlayableItem]) {
-        queue.set(items: items) { queue, items in
-            self.currentTrack = 0
-            self.delegate?.musicQueuePlayerDidSetItems(queuePlayer: self, items: items)
-        }
+    public func set(items: [PlayableItem]) async {
+        let result = await queue.set(items: items)
+        self.currentTrack = 0
+        self.delegate?.musicQueuePlayerDidSetItems(queuePlayer: self, items: result.items)
     }
     
     /// Takes an existing item in the array, `item`, and places it after the `otherItem`
-    public func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) {
-        queue.reorder(item: item, afterItem: otherItem) { result in
-            switch result {
-            case .success(_, let item, let newIndex):
-                self.delegate?.musicQueuePlayer(queuePlayer: self, didReorderItem: item, toNewIndex: newIndex)
-            case .failure:
-                break
-            }
+    public func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) async {
+        let result = await queue.reorder(item: item, afterItem: otherItem)
+        switch result {
+        case .success(let success):
+            self.delegate?.musicQueuePlayer(queuePlayer: self, didReorderItem: success.item, toNewIndex: success.index)
+        case .failure:
+            break
         }
     }
     
     /// shuffles the existing array of items starting from the index **after** the currently playing item
     ///
-    public func shuffle(fromItem item: PlayableItem) {
-        queue.shuffle(fromItem: item) { queue, unshuffledItems, shuffledItems, allItems in
-            
-        }
+    public func shuffle(fromItem item: PlayableItem) async {
+        let result = await queue.shuffle(fromItem: item)
+        // handle delegate here ...
     }
     
     // MARK: - Helpers
@@ -248,27 +247,27 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     // MARK: - Notifications
     
     /// Called when a song finishes playing
-    @objc func finished(notification: NSNotification) {
+    @objc func finished(notification: NSNotification) async {
         switch queueMode {
         case .normal:
-            advanceToNextTrack()
+            await advanceToNextTrack()
         case .repeatAll:
-            let totalQueueCount: Int = queue.numberOfItems
+            let totalQueueCount: Int = await queue.numberOfItems()
             let proposedNewCurrentTrack: Int = currentTrack + 1
             if proposedNewCurrentTrack > totalQueueCount { // go back to the beginning
                 self.currentTrack = 0
-                if let track = queue.getTrack(at: currentTrack) {
+                if let track = await queue.getTrack(at: currentTrack) {
                     let avItem = AVPlayerItem(playableItem: track)
                     player?.replaceCurrentItem(with: avItem)
-                    playNow()
+                    await playNow()
                 }
                 
             } else { // not reached end yet. just keep going
-                advanceToNextTrack()
+                await advanceToNextTrack()
             }
         case .repeatOne:
             player?.currentItem?.seek(to: .zero, completionHandler: nil)
-            playNow()
+            await playNow()
         }
     }
 }
