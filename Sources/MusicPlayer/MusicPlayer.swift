@@ -9,17 +9,21 @@ import Foundation
 import AVKit
 
 private extension AVPlayerItem {
-    convenience init(playableItem: PlayableItem) {
-        self.init(url: Bundle.main.url(forResource: playableItem.fileUrl, withExtension: "m4a")!)
+    convenience init?(playableItem: PlayableItem) {
+        guard let url: URL = Bundle.main.url(forResource: playableItem.fileUrl, withExtension: "m4a")  else {
+            return nil
+        }
+        self.init(url: url)
     }
 }
 
 public protocol PlayableItem: AnyObject {
     var id: String { get }
     var fileUrl: String { get set }
+    var fileExtension: String { get }
 }
 
-public protocol MusicQueuePlayerInterface: AnyObject {
+public protocol MusicPlayerInterface: AnyObject {
     func playAVPlayer()
     func play(startIndex: Int) async
     func pause()
@@ -39,38 +43,38 @@ public protocol MusicQueuePlayerInterface: AnyObject {
     var playingState: MusicPlayer.PlayingState { get set }
 }
 
-public protocol MusicQueuePlayerDelegate: AnyObject {
+public protocol MusicPlayerDelegate: AnyObject {
     
-    func musicQueuePlayerShuffleModeDidChange(queuPlayer: MusicPlayer, shuffleMode: MusicPlayer.ShuffleMode)
-    func musicQueuePlayerShuffleQueueDidChange(queuePlayer: MusicPlayer, shuffleMode: MusicPlayer.QueueMode)
+    func musicPlayerShuffleModeDidChange(player: MusicPlayer, shuffleMode: MusicPlayer.ShuffleMode)
+    func musicPlayerShuffleQueueDidChange(player: MusicPlayer, shuffleMode: MusicPlayer.QueueMode)
     
     // Playback
-    func musicQueuePlayer(queuePlayer: MusicPlayer, didBeginPlaybackForItem item: PlayableItem, atIndex index: Int)
-    func musicQueuePlayerDidPause(queuePlayer: MusicPlayer)
-    func musicQueuePlayer(queuePlayer: MusicPlayer, currentPlaybackTimeDidChange currentPlaybackTime: TimeInterval)
+    func musicPlayer(player: MusicPlayer, didBeginPlaybackForItem item: PlayableItem, atIndex index: Int)
+    func musicPlayerDidPause(player: MusicPlayer)
+    func musicQueuePlayer(player: MusicPlayer, currentPlaybackTimeDidChange currentPlaybackTime: TimeInterval)
     
     // Queue Modifications
-    func musicQueuePlayerDidSetItems(queuePlayer: MusicPlayer, items: [PlayableItem])
-    func musicQueuePlayerDidAppendItem(queuePlayer: MusicPlayer, item: PlayableItem)
-    func musicQueuePlayerDidPrependItem(queuePlayer: MusicPlayer, item: PlayableItem)
-    func musicQueuePlayer(queuePlayer: MusicPlayer, didInsertItem item: PlayableItem, atIndex index: Int)
-    func musicQueuePlayer(queuePlayer: MusicPlayer, didRemoveItem item: PlayableItem, atIndex index: Int)
-    func musicQueuePlayer(queuePlayer: MusicPlayer, didReorderItem item: PlayableItem, toNewIndex index: Int)
+    func musicPlayerDidSetItems(player: MusicPlayer, items: [PlayableItem])
+    func musicPlayerDidAppendItem(player: MusicPlayer, item: PlayableItem)
+    func musicPlayerDidPrependItem(player: MusicPlayer, item: PlayableItem)
+    func musicPlayer(player: MusicPlayer, didInsertItem item: PlayableItem, atIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didRemoveItem item: PlayableItem, atIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didReorderItem item: PlayableItem, toNewIndex index: Int)
 }
 
-public final class MusicPlayer: MusicQueuePlayerInterface {
+public final class MusicPlayer: MusicPlayerInterface {
     
-    public enum PlayingState {
+    public enum PlayingState: Equatable {
         case playing
         case paused
     }
     
-    public enum ShuffleMode {
+    public enum ShuffleMode: Equatable {
         case on
         case off
     }
     
-    public enum QueueMode {
+    public enum QueueMode: Equatable {
         case normal
         case repeatAll
         case repeatOne
@@ -84,13 +88,13 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     
     public var queueMode: QueueMode = .normal {
         didSet {
-            delegate?.musicQueuePlayerShuffleQueueDidChange(queuePlayer: self, shuffleMode: queueMode)
+            delegate?.musicPlayerShuffleQueueDidChange(player: self, shuffleMode: queueMode)
         }
     }
     
     public var shuffleMode: ShuffleMode = .off {
         didSet {
-            delegate?.musicQueuePlayerShuffleModeDidChange(queuPlayer: self, shuffleMode: shuffleMode)
+            delegate?.musicPlayerShuffleModeDidChange(player: self, shuffleMode: shuffleMode)
         }
     }
     
@@ -99,7 +103,7 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     public var currentTrack: Int = 0
     public var currentPlaybackTime: TimeInterval = 0
     
-    public weak var delegate: MusicQueuePlayerDelegate?
+    public weak var delegate: MusicPlayerDelegate?
     
     private let dispatchQueue: DispatchQueue = DispatchQueue(label: "com.musicplayerModifications")
     
@@ -126,7 +130,7 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
         player?.pause()
         
         playingState = .paused
-        delegate?.musicQueuePlayerDidPause(queuePlayer: self)
+        delegate?.musicPlayerDidPause(player: self)
     }
     
     /// Call after calling `setItems(items: ..)`
@@ -144,7 +148,7 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
         playAVPlayer()
         setupPlaybackTimeTimer()
         if let unwrappedTrack = await queue.getTrack(at: currentTrack) {
-            self.delegate?.musicQueuePlayer(queuePlayer: self, didBeginPlaybackForItem: unwrappedTrack, atIndex: currentTrack)
+            self.delegate?.musicPlayer(player: self, didBeginPlaybackForItem: unwrappedTrack, atIndex: currentTrack)
         }
     }
     
@@ -178,19 +182,19 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     
     public func append(item: PlayableItem) async {
         let result = await queue.append(item: item)
-        self.delegate?.musicQueuePlayerDidAppendItem(queuePlayer: self, item: result.item)
+        self.delegate?.musicPlayerDidAppendItem(player: self, item: result.item)
     }
     
     public func prepend(item: PlayableItem) async {
         let result = await queue.prepend(item: item)
-        self.delegate?.musicQueuePlayerDidPrependItem(queuePlayer: self, item: result.item)
+        self.delegate?.musicPlayerDidPrependItem(player: self, item: result.item)
     }
     
     public func insert(item: PlayableItem, afterItem: PlayableItem) async {
         let result = await queue.insert(item: item, afterItem: afterItem)
         switch result {
         case .success(let success):
-            self.delegate?.musicQueuePlayer(queuePlayer: self, didInsertItem: success.item, atIndex: success.index)
+            self.delegate?.musicPlayer(player: self, didInsertItem: success.item, atIndex: success.index)
         case .failure:
             break
         }
@@ -199,7 +203,7 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
     public func set(items: [PlayableItem]) async {
         let result = await queue.set(items: items)
         self.currentTrack = 0
-        self.delegate?.musicQueuePlayerDidSetItems(queuePlayer: self, items: result.items)
+        self.delegate?.musicPlayerDidSetItems(player: self, items: result.items)
     }
     
     /// Takes an existing item in the array, `item`, and places it after the `otherItem`
@@ -207,7 +211,7 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
         let result = await queue.reorder(item: item, afterItem: otherItem)
         switch result {
         case .success(let success):
-            self.delegate?.musicQueuePlayer(queuePlayer: self, didReorderItem: success.item, toNewIndex: success.index)
+            self.delegate?.musicPlayer(player: self, didReorderItem: success.item, toNewIndex: success.index)
         case .failure:
             break
         }
@@ -235,10 +239,9 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
                 let time: TimeInterval = self.player?.currentItem?.currentTime().seconds ?? 0
                 self.currentPlaybackTime = time
                 
-                self.delegate?.musicQueuePlayer(queuePlayer: self, currentPlaybackTimeDidChange: time)
+                self.delegate?.musicQueuePlayer(player: self, currentPlaybackTimeDidChange: time)
             case .paused: break
             }
-            
         })
         
         currentPlaybackTimeTimer?.fire()
@@ -271,12 +274,3 @@ public final class MusicPlayer: MusicQueuePlayerInterface {
         }
     }
 }
-
-
-
-
-
-
-
-
-

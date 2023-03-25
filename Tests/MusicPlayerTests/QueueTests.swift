@@ -11,10 +11,12 @@ import XCTest
 private final class MockPlayableItem: PlayableItem {
     let id: String
     var fileUrl: String
+    var fileExtension: String
     
-    init(id: String, fileUrl: String) {
+    init(id: String, fileUrl: String, fileExtension: String) {
         self.id = id
         self.fileUrl = fileUrl
+        self.fileExtension = fileExtension
     }
 }
 
@@ -66,7 +68,7 @@ final class QueueTests: XCTestCase {
     
         let _ = await queue.set(items: items)
         
-        let newItem = MockPlayableItem(id: "234", fileUrl: "...")
+        let newItem = MockPlayableItem(id: "234", fileUrl: "...", fileExtension: "")
         let afterItem = items[19] // last item in queue
         
         let _ = await queue.insert(item: newItem, afterItem: afterItem)
@@ -214,7 +216,7 @@ final class QueueTests: XCTestCase {
         let initialNumberOfitems = await queue.numberOfItems()
         XCTAssertEqual(initialNumberOfitems, 10)
         
-        let itemToInsert = MockPlayableItem(id: "11", fileUrl: "-")
+        let itemToInsert = MockPlayableItem(id: "11", fileUrl: "-", fileExtension: "")
         
         // insert after item at index 3. so now it should be at index 4
         var newItemIndex: Int?
@@ -292,7 +294,7 @@ final class QueueTests: XCTestCase {
         let initial5thTrack = await queue.getTrack(at: 4)
         XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
-        let itemToAppend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--")
+        let itemToAppend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
         
         let _ = await queue.append(item: itemToAppend)
         
@@ -319,7 +321,7 @@ final class QueueTests: XCTestCase {
         let initial5thTrack = await queue.getTrack(at: 4)
         XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
-        let itemToPrepend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--")
+        let itemToPrepend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
         let _ = await queue.prepend(item: itemToPrepend)
         
         // Now we have added 1 item
@@ -353,7 +355,7 @@ final class QueueTests: XCTestCase {
     private func createMockQueue(count: Int) -> [PlayableItem] {
         var items: [PlayableItem] = []
         for i in 0..<count {
-            let mockPlayableItem = MockPlayableItem(id: "\(i)", fileUrl: "file-url-string")
+            let mockPlayableItem = MockPlayableItem(id: "\(i)", fileUrl: "file-url-string", fileExtension: "")
             items.append(mockPlayableItem)
         }
         
