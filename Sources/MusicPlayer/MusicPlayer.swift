@@ -116,6 +116,14 @@ public final class MusicPlayer: MusicPlayerInterface {
         )
     }
     
+    func numberOfItems() async -> Int {
+        return await queue.numberOfItems()
+    }
+    
+    func getTrack(at index: Int) async -> PlayableItem? {
+        return await queue.getTrack(at: index)
+    }
+    
     // MARK: - Playing / Pausing
     
     /// Only fowards `play()` directly to the underlying AVPlayer.
@@ -155,7 +163,7 @@ public final class MusicPlayer: MusicPlayerInterface {
     // MARK: - Navigate Tracks
     
     public func goBackToPreviousTrack() async {
-        if (currentPlaybackTime < 3) && currentTrack > 0 { // go back to previous track
+        if (currentPlaybackTime <= 3) && currentTrack > 0 { // go back to previous track
             currentTrack -= 1
             if let trackToPlay = await queue.getTrack(at: currentTrack) {
                 let avItem = AVPlayerItem(playableItem: trackToPlay)

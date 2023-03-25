@@ -85,6 +85,117 @@ final class MusicPlayerTests: XCTestCase {
         XCTAssertEqual(player.shuffleMode, .on)
     }
     
+    func testGoBackToPreviousTrack() async {
+        let player: MusicPlayer = MusicPlayer()
+        let items = createMockQueue(count: 20)
+        await player.set(items: items)
+        await player.play(startIndex: 5)
+        
+        // should be 5 to start with
+        XCTAssertEqual(player.currentTrack, 5)
+        
+        // right now `currentPlaybackTime` is 0, so it should go back to track 4
+        await player.goBackToPreviousTrack()
+        
+        XCTAssertEqual(player.currentTrack, 4)
+        
+        // set to 3. if going back with <3 seconds then it should go to the previous track
+        player.currentPlaybackTime = 3
+        await player.goBackToPreviousTrack()
+        
+        XCTAssertEqual(player.currentTrack, 3)
+        
+        // set to 4. should not affect current track
+        player.currentPlaybackTime = 4
+        await player.goBackToPreviousTrack()
+        
+        XCTAssertEqual(player.currentTrack, 3)
+    }
+    
+    func testGoToNextTrack() async {
+        let player: MusicPlayer = MusicPlayer()
+        let items = createMockQueue(count: 20)
+        await player.set(items: items)
+        await player.play(startIndex: 5)
+        
+        // should be 5 to start with
+        XCTAssertEqual(player.currentTrack, 5)
+        
+        await player.advanceToNextTrack()
+        XCTAssertEqual(player.currentTrack, 6)
+        
+        await player.advanceToNextTrack()
+        XCTAssertEqual(player.currentTrack, 7)
+        
+        await player.advanceToNextTrack()
+        XCTAssertEqual(player.currentTrack, 8)
+        
+        await player.advanceToNextTrack()
+        XCTAssertEqual(player.currentTrack, 9)
+        
+        // Test advance beyond all tracks
+        
+        // queue has 20 items
+        player.currentTrack = 19
+        XCTAssertEqual(player.playingState, .playing)
+        await player.advanceToNextTrack()
+        XCTAssertEqual(player.playingState, .paused)
+    }
+    
+    func testAppend() async {
+        let player: MusicPlayer = MusicPlayer()
+        let items = createMockQueue(count: 400)
+        await player.set(items: items)
+        await player.play(startIndex: 5)
+        
+        let count = await player.numberOfItems()
+        XCTAssertEqual(count, 400)
+        let trackAt400: PlayableItem? = await player.getTrack(at: 400)
+        XCTAssertNil(trackAt400)
+        
+        let itemToAppend: PlayableItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
+        await player.append(item: itemToAppend)
+        
+        let newCount: Int = await player.numberOfItems()
+        XCTAssertEqual(newCount, 401)
+        
+        guard let track: PlayableItem = await player.getTrack(at: 400) else {
+            XCTFail()
+            return
+        }
+        
+        XCTAssertEqual(track.id, "x")
+        XCTAssertEqual(track.fileUrl, "...")
+        XCTAssertEqual(track.fileExtension, "ext")
+    }
+    
+    func testPrepend() async {
+        let player: MusicPlayer = MusicPlayer()
+        let items = createMockQueue(count: 400)
+        await player.set(items: items)
+        await player.play(startIndex: 5)
+        
+        let count = await player.numberOfItems()
+        XCTAssertEqual(count, 400)
+        let firstTrack: PlayableItem? = await player.getTrack(at: 0)
+        XCTAssertEqual(firstTrack?.id, "0")
+        
+        let itemToPrepend: PlayableItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
+        await player.prepend(item: itemToPrepend)
+        
+        let newCount: Int = await player.numberOfItems()
+        XCTAssertEqual(newCount, 401)
+        
+        guard let track: PlayableItem = await player.getTrack(at: 0) else {
+            XCTFail()
+            return
+        }
+        
+        XCTAssertEqual(track.id, "x")
+        XCTAssertEqual(track.fileUrl, "...")
+        XCTAssertEqual(track.fileExtension, "ext")
+    }
+    
     private func createMockQueue(count: Int) -> [PlayableItem] {
         var items: [PlayableItem] = []
         for i in 0..<count {
