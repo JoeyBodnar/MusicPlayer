@@ -63,14 +63,14 @@ enum QueueInsertionFailure: Error {
     case indexNotFound
 }
 
-struct QueueShuffleOperationSuccess {
+public struct QueueShuffleOperationSuccess {
     let queue: Queue
     let unshuffledItems: [PlayableItem]
     let shuffledItems: [PlayableItem]
     let allItems: [PlayableItem]
 }
 
-enum QueueShuffleFailure: Error {
+public enum QueueShuffleFailure: Error {
     /// the index to start shuffling from was not found
     case indexNotFound
 }

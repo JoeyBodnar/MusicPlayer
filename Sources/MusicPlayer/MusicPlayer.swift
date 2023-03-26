@@ -60,6 +60,7 @@ public protocol MusicPlayerDelegate: AnyObject {
     func musicPlayer(player: MusicPlayer, didInsertItem item: PlayableItem, atIndex index: Int)
     func musicPlayer(player: MusicPlayer, didRemoveItem item: PlayableItem, atIndex index: Int)
     func musicPlayer(player: MusicPlayer, didReorderItem item: PlayableItem, toNewIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didFinishShuffleOperation result: Result<QueueShuffleOperationSuccess, QueueShuffleFailure>)
 }
 
 public final class MusicPlayer: MusicPlayerInterface {
@@ -229,7 +230,7 @@ public final class MusicPlayer: MusicPlayerInterface {
     ///
     public func shuffle(fromItem item: PlayableItem) async {
         let result = await queue.shuffle(fromItem: item)
-        // handle delegate here ...
+        delegate?.musicPlayer(player: self, didFinishShuffleOperation: result)
     }
     
     // MARK: - Helpers
@@ -267,12 +268,7 @@ public final class MusicPlayer: MusicPlayerInterface {
             let proposedNewCurrentTrack: Int = currentTrack + 1
             if proposedNewCurrentTrack > totalQueueCount { // go back to the beginning
                 self.currentTrack = 0
-                if let track = await queue.getTrack(at: currentTrack) {
-                    let avItem = AVPlayerItem(playableItem: track)
-                    player?.replaceCurrentItem(with: avItem)
-                    await playNow()
-                }
-                
+                await play(startIndex: 0)
             } else { // not reached end yet. just keep going
                 await advanceToNextTrack()
             }
