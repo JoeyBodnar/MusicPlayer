@@ -108,7 +108,7 @@ public final class MusicPlayer: MusicPlayerInterface {
     
     private let dispatchQueue: DispatchQueue = DispatchQueue(label: "com.musicplayerModifications")
     
-    init() {
+    public init() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(finished),
@@ -117,11 +117,11 @@ public final class MusicPlayer: MusicPlayerInterface {
         )
     }
     
-    func numberOfItems() async -> Int {
+    public func numberOfItems() async -> Int {
         return await queue.numberOfItems()
     }
     
-    func getTrack(at index: Int) async -> PlayableItem? {
+    public func getTrack(at index: Int) async -> PlayableItem? {
         return await queue.getTrack(at: index)
     }
     
