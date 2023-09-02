@@ -9,7 +9,7 @@ import Foundation
 import AVKit
 
 private extension AVPlayerItem {
-    convenience init?(playableItem: PlayableItem) {
+    convenience init?(playableItem: QueueItem) {
         guard let url: URL = Bundle.main.url(forResource: playableItem.fileUrl, withExtension: "m4a")  else {
             return nil
         }
@@ -17,7 +17,7 @@ private extension AVPlayerItem {
     }
 }
 
-public protocol PlayableItem: AnyObject {
+public protocol QueueItem: AnyObject {
     var id: String { get }
     var fileUrl: String { get set }
     var fileExtension: String { get }
@@ -28,12 +28,12 @@ public protocol MusicPlayerInterface: AnyObject {
     func play(startIndex: Int) async
     func pause()
     
-    func append(item: PlayableItem) async
-    func prepend(item: PlayableItem) async
-    func insert(item: PlayableItem, afterItem: PlayableItem) async
-    func set(items: [PlayableItem]) async
-    func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) async
-    func shuffle(fromItem item: PlayableItem) async
+    func append(item: QueueItem) async
+    func prepend(item: QueueItem) async
+    func insert(item: QueueItem, afterItem: QueueItem) async
+    func set(items: [QueueItem]) async
+    func reorder(item: QueueItem, afterItem otherItem: QueueItem) async
+    func shuffle(fromItem item: QueueItem) async
     
     func goBackToPreviousTrack() async
     func advanceToNextTrack() async
@@ -49,17 +49,17 @@ public protocol MusicPlayerDelegate: AnyObject {
     func musicPlayerShuffleQueueDidChange(player: MusicPlayer, shuffleMode: MusicPlayer.QueueMode)
     
     // Playback
-    func musicPlayer(player: MusicPlayer, didBeginPlaybackForItem item: PlayableItem, atIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didBeginPlaybackForItem item: QueueItem, atIndex index: Int)
     func musicPlayerDidPause(player: MusicPlayer)
     func musicQueuePlayer(player: MusicPlayer, currentPlaybackTimeDidChange currentPlaybackTime: TimeInterval)
     
     // Queue Modifications
-    func musicPlayerDidSetItems(player: MusicPlayer, items: [PlayableItem])
-    func musicPlayerDidAppendItem(player: MusicPlayer, item: PlayableItem)
-    func musicPlayerDidPrependItem(player: MusicPlayer, item: PlayableItem)
-    func musicPlayer(player: MusicPlayer, didInsertItem item: PlayableItem, atIndex index: Int)
-    func musicPlayer(player: MusicPlayer, didRemoveItem item: PlayableItem, atIndex index: Int)
-    func musicPlayer(player: MusicPlayer, didReorderItem item: PlayableItem, toNewIndex index: Int)
+    func musicPlayerDidSetItems(player: MusicPlayer, items: [QueueItem])
+    func musicPlayerDidAppendItem(player: MusicPlayer, item: QueueItem)
+    func musicPlayerDidPrependItem(player: MusicPlayer, item: QueueItem)
+    func musicPlayer(player: MusicPlayer, didInsertItem item: QueueItem, atIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didRemoveItem item: QueueItem, atIndex index: Int)
+    func musicPlayer(player: MusicPlayer, didReorderItem item: QueueItem, toNewIndex index: Int)
     func musicPlayer(player: MusicPlayer, didFinishShuffleOperation result: Result<QueueShuffleOperationSuccess, QueueShuffleFailure>)
 }
 
@@ -121,9 +121,9 @@ public final class MusicPlayer: MusicPlayerInterface {
         return await queue.numberOfItems()
     }
     
-    public func getTrack(at index: Int) async -> PlayableItem? {
+    public func getTrack(at index: Int) async -> QueueItem? {
         return await queue.getTrack(at: index)
-    }
+    }gi
     
     // MARK: - Playing / Pausing
     
@@ -189,17 +189,17 @@ public final class MusicPlayer: MusicPlayerInterface {
     
     // MARK: - Queue Modification
     
-    public func append(item: PlayableItem) async {
+    public func append(item: QueueItem) async {
         let result = await queue.append(item: item)
         self.delegate?.musicPlayerDidAppendItem(player: self, item: result.item)
     }
     
-    public func prepend(item: PlayableItem) async {
+    public func prepend(item: QueueItem) async {
         let result = await queue.prepend(item: item)
         self.delegate?.musicPlayerDidPrependItem(player: self, item: result.item)
     }
     
-    public func insert(item: PlayableItem, afterItem: PlayableItem) async {
+    public func insert(item: QueueItem, afterItem: QueueItem) async {
         let result = await queue.insert(item: item, afterItem: afterItem)
         switch result {
         case .success(let success):
@@ -209,14 +209,14 @@ public final class MusicPlayer: MusicPlayerInterface {
         }
     }
     
-    public func set(items: [PlayableItem]) async {
+    public func set(items: [QueueItem]) async {
         let result = await queue.set(items: items)
         self.currentTrack = 0
         self.delegate?.musicPlayerDidSetItems(player: self, items: result.items)
     }
     
     /// Takes an existing item in the array, `item`, and places it after the `otherItem`
-    public func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) async {
+    public func reorder(item: QueueItem, afterItem otherItem: QueueItem) async {
         let result = await queue.reorder(item: item, afterItem: otherItem)
         switch result {
         case .success(let success):
@@ -228,7 +228,7 @@ public final class MusicPlayer: MusicPlayerInterface {
     
     /// shuffles the existing array of items starting from the index **after** the currently playing item
     ///
-    public func shuffle(fromItem item: PlayableItem) async {
+    public func shuffle(fromItem item: QueueItem) async {
         let result = await queue.shuffle(fromItem: item)
         delegate?.musicPlayer(player: self, didFinishShuffleOperation: result)
     }

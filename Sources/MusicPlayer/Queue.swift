@@ -8,15 +8,15 @@
 import Foundation
 
 protocol QueueInterface: Actor {
-    func append(item: PlayableItem) -> QueueModificationSuccess
-    func prepend(item: PlayableItem) -> QueueModificationSuccess
-    func insert(item: PlayableItem, afterItem: PlayableItem) -> Result<QueueModificationSuccess, QueueInsertionFailure>
-    func set(items: [PlayableItem]) -> (queue: Queue, items: [PlayableItem])
-    func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) -> Result<QueueReorderOperationSuccess, QueueReorderOperationFailureType>
-    func remove(item: PlayableItem) -> Result<QueueModificationSuccess, QueueRemoveOperationFailureType>
-    func shuffle(fromItem item: PlayableItem) -> Result<QueueShuffleOperationSuccess, QueueShuffleFailure>
+    func append(item: QueueItem) -> QueueModificationSuccess
+    func prepend(item: QueueItem) -> QueueModificationSuccess
+    func insert(item: QueueItem, afterItem: QueueItem) -> Result<QueueModificationSuccess, QueueInsertionFailure>
+    func set(items: [QueueItem]) -> (queue: Queue, items: [QueueItem])
+    func reorder(item: QueueItem, afterItem otherItem: QueueItem) -> Result<QueueReorderOperationSuccess, QueueReorderOperationFailureType>
+    func remove(item: QueueItem) -> Result<QueueModificationSuccess, QueueRemoveOperationFailureType>
+    func shuffle(fromItem item: QueueItem) -> Result<QueueShuffleOperationSuccess, QueueShuffleFailure>
     
-    func getTrack(at index: Int) -> PlayableItem?
+    func getTrack(at index: Int) -> QueueItem?
     
     func numberOfItems() -> Int
 }
@@ -32,7 +32,7 @@ struct QueueReorderOperationSuccess {
     let queue: Queue
     
     /// the item that was inserted
-    let item: PlayableItem
+    let item: QueueItem
     
     /// the index where the item was inserted
     let index: Int
@@ -47,7 +47,7 @@ struct QueueModificationSuccess {
     
     /// the item which modified the queue. For appending, prepending, and inserting, this was the item that was added.
     /// for removing, this was the item that was removed
-    let item: PlayableItem
+    let item: QueueItem
     
     /// the index modified. for appending, prepending, and inserting, this was the index where the `item` property is now placed int he array
     /// for removing, this is the index the item was at before it was removed
@@ -65,9 +65,9 @@ enum QueueInsertionFailure: Error {
 
 public struct QueueShuffleOperationSuccess {
     let queue: Queue
-    let unshuffledItems: [PlayableItem]
-    let shuffledItems: [PlayableItem]
-    let allItems: [PlayableItem]
+    let unshuffledItems: [QueueItem]
+    let shuffledItems: [QueueItem]
+    let allItems: [QueueItem]
 }
 
 public enum QueueShuffleFailure: Error {
@@ -76,23 +76,23 @@ public enum QueueShuffleFailure: Error {
 }
 
 actor Queue: QueueInterface {
-    private var items: [PlayableItem] = []
+    private var items: [QueueItem] = []
     
     func numberOfItems() -> Int {
         return items.count
     }
     
-    func append(item: PlayableItem) -> QueueModificationSuccess {
+    func append(item: QueueItem) -> QueueModificationSuccess {
         self.items.append(item)
         return QueueModificationSuccess(queue: self, item: item, index: items.count - 1)
     }
     
-    func prepend(item: PlayableItem) -> QueueModificationSuccess {
+    func prepend(item: QueueItem) -> QueueModificationSuccess {
         self.items = [item] + self.items
         return QueueModificationSuccess(queue: self, item: item, index: 0)
     }
     
-    func insert(item: PlayableItem, afterItem: PlayableItem) -> Result<QueueModificationSuccess, QueueInsertionFailure> {
+    func insert(item: QueueItem, afterItem: QueueItem) -> Result<QueueModificationSuccess, QueueInsertionFailure> {
         if let index = indexOf(item: afterItem) {
             let proposedIndex: Int = index + 1 // add 1, because the `insert` api for Swift arrays inserts the item **before** but we want to insert after
             if proposedIndex > self.items.count { // invalid index
@@ -106,12 +106,12 @@ actor Queue: QueueInterface {
         return Result.failure(QueueInsertionFailure.indexNotFound)
     }
     
-    func set(items: [PlayableItem]) -> (queue: Queue, items: [PlayableItem]) {
+    func set(items: [QueueItem]) -> (queue: Queue, items: [QueueItem]) {
         self.items = items
         return (self, items)
     }
     
-    func reorder(item: PlayableItem, afterItem otherItem: PlayableItem) -> Result<QueueReorderOperationSuccess, QueueReorderOperationFailureType> {
+    func reorder(item: QueueItem, afterItem otherItem: QueueItem) -> Result<QueueReorderOperationSuccess, QueueReorderOperationFailureType> {
         if let indexOfItemToReorder = self.indexOf(item: item) {
             self.items.remove(at: indexOfItemToReorder)
             if let indexOfOtherItem = self.indexOf(item: otherItem) {
@@ -135,7 +135,7 @@ actor Queue: QueueInterface {
         }
     }
     
-    func remove(item: PlayableItem) -> Result<QueueModificationSuccess, QueueRemoveOperationFailureType> {
+    func remove(item: QueueItem) -> Result<QueueModificationSuccess, QueueRemoveOperationFailureType> {
         if let index = indexOf(item: item) {
             self.items.remove(at: index)
             return Result.success(QueueModificationSuccess(queue: self, item: item, index: index))
@@ -145,14 +145,14 @@ actor Queue: QueueInterface {
     }
     
     /// shuffle all songs **after** this item
-    func shuffle(fromItem item: PlayableItem) -> Result<QueueShuffleOperationSuccess, QueueShuffleFailure> {
+    func shuffle(fromItem item: QueueItem) -> Result<QueueShuffleOperationSuccess, QueueShuffleFailure> {
         if let index = indexOf(item: item) {
             let indexToBeginShuffle = index + 1 // keep starting index in place
-            let itemsNotToShuffle: [PlayableItem] = Array(items.prefix(indexToBeginShuffle))
-            let itemsToShuffle: [PlayableItem] = Array(items.suffix(numberOfItems() - (indexToBeginShuffle)))
+            let itemsNotToShuffle: [QueueItem] = Array(items.prefix(indexToBeginShuffle))
+            let itemsToShuffle: [QueueItem] = Array(items.suffix(numberOfItems() - (indexToBeginShuffle)))
             
-            let shuffled: [PlayableItem] = itemsToShuffle.shuffled()
-            let newItems: [PlayableItem] = itemsNotToShuffle + shuffled
+            let shuffled: [QueueItem] = itemsToShuffle.shuffled()
+            let newItems: [QueueItem] = itemsNotToShuffle + shuffled
             self.items = newItems
             return Result.success(QueueShuffleOperationSuccess(queue: self, unshuffledItems: itemsNotToShuffle, shuffledItems: shuffled, allItems: newItems))
         }
@@ -161,7 +161,7 @@ actor Queue: QueueInterface {
     
     // MARK: - Helpers
     
-    func getTrack(at index: Int) -> PlayableItem? {
+    func getTrack(at index: Int) -> QueueItem? {
         guard index < items.count  else {
             return nil
         }
@@ -171,7 +171,7 @@ actor Queue: QueueInterface {
     
     // MARK: - Private
     
-    private func indexOf(item: PlayableItem) -> Int? {
+    private func indexOf(item: QueueItem) -> Int? {
         return items.firstIndex(where: { playerItem in
             return playerItem.id == item.id
         })

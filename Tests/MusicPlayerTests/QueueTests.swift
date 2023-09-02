@@ -8,7 +8,7 @@
 import XCTest
 @testable import MusicPlayer
 
-private final class MockPlayableItem: PlayableItem {
+private final class MockPlayableItem: QueueItem {
     let id: String
     var fileUrl: String
     var fileExtension: String
@@ -23,7 +23,7 @@ private final class MockPlayableItem: PlayableItem {
 final class QueueTests: XCTestCase {
     
     func testSetItems() async {
-        let items: [PlayableItem] = createMockQueue(count: 1000)
+        let items: [QueueItem] = createMockQueue(count: 1000)
         let queue = Queue()
     
         let _ = await queue.set(items: items)
@@ -41,7 +41,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testReorder() async {
-        let items: [PlayableItem] = createMockQueue(count: 1000)
+        let items: [QueueItem] = createMockQueue(count: 1000)
         let queue = Queue()
     
         let _ = await queue.set(items: items)
@@ -63,7 +63,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testQueue() async {
-        let items: [PlayableItem] = createMockQueue(count: 20)
+        let items: [QueueItem] = createMockQueue(count: 20)
         let queue = Queue()
     
         let _ = await queue.set(items: items)
@@ -78,7 +78,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testShuffled() async {
-        let items: [PlayableItem] = createMockQueue(count: 6)
+        let items: [QueueItem] = createMockQueue(count: 8)
         let queue = Queue()
     
         let _ = await queue.set(items: items)
@@ -89,6 +89,8 @@ final class QueueTests: XCTestCase {
         let fourthTrack = await queue.getTrack(at: 3)
         let fifthTrack = await queue.getTrack(at: 4)
         let sixthTrack = await queue.getTrack(at: 5)
+        let seventhTrack = await queue.getTrack(at: 6)
+        let eighthTrack = await queue.getTrack(at: 7)
         
         XCTAssertEqual(firstTrack?.id, "0")
         XCTAssertEqual(secondTrack?.id, "1")
@@ -96,18 +98,20 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(fourthTrack?.id, "3")
         XCTAssertEqual(fifthTrack?.id, "4")
         XCTAssertEqual(sixthTrack?.id, "5")
+        XCTAssertEqual(seventhTrack?.id, "6")
+        XCTAssertEqual(eighthTrack?.id, "7")
         
         let originalItemsHash = hashForItems(items: items)
         
-        let queueItemsHash = hashForItems(items: [firstTrack!, secondTrack!, thirdTrack!, fourthTrack!, fifthTrack!, sixthTrack!])
+        let queueItemsHash = hashForItems(items: [firstTrack!, secondTrack!, thirdTrack!, fourthTrack!, fifthTrack!, sixthTrack!, seventhTrack!, eighthTrack!])
         
         // hash should be equal before shuffling
         XCTAssertEqual(originalItemsHash, queueItemsHash)
         
-        var unshuffled: [PlayableItem] = []
-        var newItems: [PlayableItem] = []
+        var unshuffled: [QueueItem] = []
+        var newItems: [QueueItem] = []
         
-        let result = await queue.shuffle(fromItem: items[2])
+        let result = await queue.shuffle(fromItem: items[1])
         switch result {
         case .success(let successOperation):
             unshuffled = successOperation.unshuffledItems
@@ -120,16 +124,15 @@ final class QueueTests: XCTestCase {
         XCTAssertNotEqual(originalItemsHash, hashForItems(items: newItems))
         
         let numberOfItemsAfter = await queue.numberOfItems()
-        XCTAssertEqual(numberOfItemsAfter, 6)
+        XCTAssertEqual(numberOfItemsAfter, 8)
         
-        // first 3 items (up to index 2) should remain unchanged
+        // first 2 items (up to index 1) should remain unchanged
         XCTAssertEqual(unshuffled[0].id, "0")
         XCTAssertEqual(unshuffled[1].id, "1")
-        XCTAssertEqual(unshuffled[2].id, "2")
     }
     
     func testShuffled2() async {
-        let items: [PlayableItem] = createMockQueue(count: 15)
+        let items: [QueueItem] = createMockQueue(count: 15)
         
         let queue = Queue()
         let _ = await queue.set(items: items)
@@ -169,7 +172,7 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(fourteenthTrack?.id, "13")
         XCTAssertEqual(fifteenthTrack?.id, "14")
         
-        var unshuffled: [PlayableItem] = []
+        var unshuffled: [QueueItem] = []
         var shuffledCount: Int?
         
         let result = await queue.shuffle(fromItem: items[9])
@@ -199,7 +202,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testNumberOfItems() async {
-        let items: [PlayableItem] = createMockQueue(count: 30)
+        let items: [QueueItem] = createMockQueue(count: 30)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
@@ -209,7 +212,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testInsert() async {
-        let items: [PlayableItem] = createMockQueue(count: 10)
+        let items: [QueueItem] = createMockQueue(count: 10)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
@@ -220,7 +223,7 @@ final class QueueTests: XCTestCase {
         
         // insert after item at index 3. so now it should be at index 4
         var newItemIndex: Int?
-        var insertedItem: PlayableItem?
+        var insertedItem: QueueItem?
         let result = await queue.insert(item: itemToInsert, afterItem: items[3])
         switch result {
         case .success(let modificationSuccess):
@@ -245,16 +248,16 @@ final class QueueTests: XCTestCase {
     }
     
     func testRemove() async {
-        let items: [PlayableItem] = createMockQueue(count: 5)
+        let items: [QueueItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
         let initialNumberOfitems = await queue.numberOfItems()
         XCTAssertEqual(initialNumberOfitems, 5)
         
-        let itemToRemove: PlayableItem = items[3]
+        let itemToRemove: QueueItem = items[3]
         
-        var removedItem: PlayableItem?
+        var removedItem: QueueItem?
         var removedIndex: Int?
         
         let result = await queue.remove(item: itemToRemove)
@@ -284,7 +287,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testAppend() async {
-        let items: [PlayableItem] = createMockQueue(count: 5)
+        let items: [QueueItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
@@ -294,7 +297,7 @@ final class QueueTests: XCTestCase {
         let initial5thTrack = await queue.getTrack(at: 4)
         XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
-        let itemToAppend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
+        let itemToAppend: QueueItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
         
         let _ = await queue.append(item: itemToAppend)
         
@@ -311,7 +314,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testPrepend() async {
-        let items: [PlayableItem] = createMockQueue(count: 5)
+        let items: [QueueItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
@@ -321,7 +324,7 @@ final class QueueTests: XCTestCase {
         let initial5thTrack = await queue.getTrack(at: 4)
         XCTAssertEqual(initial5thTrack?.id, items[4].id)
         
-        let itemToPrepend: PlayableItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
+        let itemToPrepend: QueueItem = MockPlayableItem(id: "6", fileUrl: "--", fileExtension: "")
         let _ = await queue.prepend(item: itemToPrepend)
         
         // Now we have added 1 item
@@ -341,7 +344,7 @@ final class QueueTests: XCTestCase {
     }
     
     func testGetTrackInvalidIndex() async {
-        let items: [PlayableItem] = createMockQueue(count: 5)
+        let items: [QueueItem] = createMockQueue(count: 5)
         let queue: Queue = Queue()
         
         let _ = await queue.set(items: items)
@@ -352,8 +355,8 @@ final class QueueTests: XCTestCase {
         XCTAssertNil(track6)
     }
     
-    private func createMockQueue(count: Int) -> [PlayableItem] {
-        var items: [PlayableItem] = []
+    private func createMockQueue(count: Int) -> [QueueItem] {
+        var items: [QueueItem] = []
         for i in 0..<count {
             let mockPlayableItem = MockPlayableItem(id: "\(i)", fileUrl: "file-url-string", fileExtension: "")
             items.append(mockPlayableItem)
@@ -362,7 +365,7 @@ final class QueueTests: XCTestCase {
         return items
     }
     
-    private func hashForItems(items: [PlayableItem]) -> [Int] {
+    private func hashForItems(items: [QueueItem]) -> [Int] {
         return items.map { $0.id.hashValue }
     }
 }

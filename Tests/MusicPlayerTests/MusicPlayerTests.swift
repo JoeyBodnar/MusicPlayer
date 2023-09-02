@@ -39,7 +39,7 @@ final class MusicPlayerTests: XCTestCase {
     }
     
     func testSetItems() async {
-        let items: [PlayableItem] = createMockQueue(count: 100)
+        let items: [QueueItem] = createMockQueue(count: 100)
         let player = MusicPlayer()
         let mockDelegate = MockMusicPlayerDelegate()
         player.delegate = mockDelegate
@@ -52,7 +52,7 @@ final class MusicPlayerTests: XCTestCase {
     }
     
     func testPlayFromStartIndex() async{
-        let items: [PlayableItem] = createMockQueue(count: 100)
+        let items: [QueueItem] = createMockQueue(count: 100)
         let player = MusicPlayer()
         let mockDelegate = MockMusicPlayerDelegate()
         player.delegate = mockDelegate
@@ -150,16 +150,16 @@ final class MusicPlayerTests: XCTestCase {
         
         let count = await player.numberOfItems()
         XCTAssertEqual(count, 400)
-        let trackAt400: PlayableItem? = await player.getTrack(at: 400)
+        let trackAt400: QueueItem? = await player.getTrack(at: 400)
         XCTAssertNil(trackAt400)
         
-        let itemToAppend: PlayableItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
+        let itemToAppend: QueueItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
         await player.append(item: itemToAppend)
         
         let newCount: Int = await player.numberOfItems()
         XCTAssertEqual(newCount, 401)
         
-        guard let track: PlayableItem = await player.getTrack(at: 400) else {
+        guard let track: QueueItem = await player.getTrack(at: 400) else {
             XCTFail()
             return
         }
@@ -177,16 +177,16 @@ final class MusicPlayerTests: XCTestCase {
         
         let count = await player.numberOfItems()
         XCTAssertEqual(count, 400)
-        let firstTrack: PlayableItem? = await player.getTrack(at: 0)
+        let firstTrack: QueueItem? = await player.getTrack(at: 0)
         XCTAssertEqual(firstTrack?.id, "0")
         
-        let itemToPrepend: PlayableItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
+        let itemToPrepend: QueueItem = MockPlayableItem(id: "x", fileUrl: "...", fileExtension: "ext")
         await player.prepend(item: itemToPrepend)
         
         let newCount: Int = await player.numberOfItems()
         XCTAssertEqual(newCount, 401)
         
-        guard let track: PlayableItem = await player.getTrack(at: 0) else {
+        guard let track: QueueItem = await player.getTrack(at: 0) else {
             XCTFail()
             return
         }
@@ -290,7 +290,7 @@ final class MusicPlayerTests: XCTestCase {
         XCTAssertEqual(item4before?.id, "3")
         
         // then insert item
-        let itemToInsert: PlayableItem = MockPlayableItem(id: "inserted", fileUrl: "", fileExtension: "")
+        let itemToInsert: QueueItem = MockPlayableItem(id: "inserted", fileUrl: "", fileExtension: "")
         await player.insert(item: itemToInsert, afterItem: item2before!)
         
         let newNumberOfItems = await player.numberOfItems()
@@ -311,7 +311,7 @@ final class MusicPlayerTests: XCTestCase {
     
     func testReorder() async {
         let player: MusicPlayer = MusicPlayer()
-        let items: [PlayableItem] = createMockQueue(count: 15)
+        let items: [QueueItem] = createMockQueue(count: 15)
         await player.set(items: items)
         
         let numberOfItems = await player.numberOfItems()
@@ -331,8 +331,23 @@ final class MusicPlayerTests: XCTestCase {
         XCTAssertEqual(ninthTrack?.id, tenthIndexItem.id)
     }
     
-    private func createMockQueue(count: Int) -> [PlayableItem] {
-        var items: [PlayableItem] = []
+    func testShuffleDidFinishInvoked() async {
+        let player: MusicPlayer = MusicPlayer()
+        let items: [QueueItem] = createMockQueue(count: 15)
+        await player.set(items: items)
+        
+        let mockDelegate = MockMusicPlayerDelegate()
+        player.delegate = mockDelegate
+        
+        XCTAssertFalse(mockDelegate.shuffleDidFinishInvoked)
+        
+        await player.shuffle(fromItem: items[5])
+        
+        XCTAssertTrue(mockDelegate.shuffleDidFinishInvoked)
+    }
+    
+    private func createMockQueue(count: Int) -> [QueueItem] {
+        var items: [QueueItem] = []
         for i in 0..<count {
             let mockPlayableItem = MockPlayableItem(id: "\(i)", fileUrl: "file-url-string", fileExtension: "")
             items.append(mockPlayableItem)
@@ -363,7 +378,7 @@ final class MockMusicPlayerDelegate: MusicPlayerDelegate {
         
     }
     
-    func musicPlayer(player: MusicPlayer, didBeginPlaybackForItem item: PlayableItem, atIndex index: Int) {
+    func musicPlayer(player: MusicPlayer, didBeginPlaybackForItem item: QueueItem, atIndex index: Int) {
         didBeginPlaybackForItemInvoked = true
     }
     
@@ -375,32 +390,32 @@ final class MockMusicPlayerDelegate: MusicPlayerDelegate {
         
     }
     
-    func musicPlayerDidSetItems(player: MusicPlayer, items: [PlayableItem]) {
+    func musicPlayerDidSetItems(player: MusicPlayer, items: [QueueItem]) {
         musicPlayerDidSetItems = true
     }
     
-    func musicPlayerDidAppendItem(player: MusicPlayer, item: PlayableItem) {
+    func musicPlayerDidAppendItem(player: MusicPlayer, item: QueueItem) {
         
     }
     
-    func musicPlayerDidPrependItem(player: MusicPlayer, item: PlayableItem) {
+    func musicPlayerDidPrependItem(player: MusicPlayer, item: QueueItem) {
         
     }
     
-    func musicPlayer(player: MusicPlayer, didInsertItem item: PlayableItem, atIndex index: Int) {
+    func musicPlayer(player: MusicPlayer, didInsertItem item: QueueItem, atIndex index: Int) {
         
     }
     
-    func musicPlayer(player: MusicPlayer, didRemoveItem item: PlayableItem, atIndex index: Int) {
+    func musicPlayer(player: MusicPlayer, didRemoveItem item: QueueItem, atIndex index: Int) {
         
     }
     
-    func musicPlayer(player: MusicPlayer, didReorderItem item: PlayableItem, toNewIndex index: Int) {
+    func musicPlayer(player: MusicPlayer, didReorderItem item: QueueItem, toNewIndex index: Int) {
         
     }
 }
 
-private final class MockPlayableItem: PlayableItem {
+private final class MockPlayableItem: QueueItem {
     let id: String
     var fileUrl: String
     var fileExtension: String
